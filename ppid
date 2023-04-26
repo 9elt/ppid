@@ -1,0 +1,86 @@
+#!/bin/bash
+
+PORTS=()
+FIRST_PORT="$1"
+
+if [[ ! "$FIRST_PORT" =~ ^-?[0-9]+$ ]]
+then
+  TARGET="$FIRST_PORT"
+  FIRST_PORT="$2"
+fi
+
+if [[ "$FIRST_PORT" = "" ]]
+then
+  AUTO=true
+else
+  PORTS=("${@}")
+fi
+
+PROCESSES=$( ss -tulwp | grep "LISTEN" | grep "$TARGET" )
+
+get_process_by_port() {
+  echo "$PROCESSES" | grep ":$1"
+}
+
+process_port() {
+  echo "$1" | cut -d ":" -f 2 | cut -d " " -f 1
+}
+
+process_name() {
+  if [[ "$1" =~ "users:" ]]
+  then
+    echo "$1" | cut -d '"' -f 2 | cut -d "," -f 1
+  fi
+}
+
+process_id() {
+  if [[ "$1" =~ "pid" ]]
+  then
+    echo "$1" | cut -d "=" -f 2 | cut -d "," -f 1
+  fi
+}
+
+if [[ "$AUTO" ]]
+then
+
+  readarray -t TMP <<<"$PROCESSES"
+
+  for PROCESS in "${TMP[@]}"
+  do
+    PORTS+=($( process_port "$PROCESS" ))
+  done
+
+fi
+
+echo -e "\x1b[90mport > pid (user)\x1b[0m"
+
+for PORT in "${PORTS[@]}"
+do
+
+  if [[ "$PORT" = "$TARGET" ]]
+  then
+    continue
+  fi
+
+  CURR_PROCESS=$( get_process_by_port $PORT )
+  CURR_ID=$( process_id "$CURR_PROCESS" )
+  CURR_NAME=$( process_name "$CURR_PROCESS" )
+  CURR_PORT=$( process_port "$CURR_PROCESS" )
+
+  if [[ "$CURR_ID" ]]
+  then
+
+    echo -e "$CURR_PORT > \x1b[1;36m$CURR_ID\x1b[0m ($CURR_NAME)"
+
+  elif [[ "$CURR_PORT" ]]
+  then
+
+    echo -e "$CURR_PORT > \x1b[1;33mNO PROCESS\x1b[0m"
+
+  else
+
+    echo -e "$PORT > \x1b[1;31mINACTIVE\x1b[0m"
+
+  fi
+
+done
