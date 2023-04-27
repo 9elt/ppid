@@ -16,7 +16,7 @@ else
   PORTS=("${@}")
 fi
 
-PROCESSES=$( ss -tulwp | grep "LISTEN" | grep "$TARGET" )
+PROCESSES=$( ss -tulwnp | grep "LISTEN" | grep "$TARGET" )
 
 get_process_by_port() {
   echo "$PROCESSES" | grep ":$1"
